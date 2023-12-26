@@ -616,10 +616,8 @@ class OptionsIronCondorMWT(Strategy):
         stop_greater_than=None,
         stop_less_than=None,
     ):
-        # Get the greeks for each strike
         strike_deltas = {}
         for strike in strikes:
-            # Create the asset
             asset = Asset(
                 symbol,
                 asset_type="option",
@@ -631,36 +629,33 @@ class OptionsIronCondorMWT(Strategy):
             # Get the last price for this asset
             price = self.get_last_price(asset)
 
-            if price is not None and price > 0:
-                # Get the greeks for the asset if it is a valid strike
-                # Invalid strikes will have a price of zero
-                # Invoking get_geeks with an invalid strike will generate an error
+            if price is None or price <= 0:
+                # Skip strikes with invalid prices
+                continue
+
+            try:
+                # Obtain Greeks for the asset if it is a valid strike
                 greeks = self.get_greeks(asset)
 
-                if greeks is not None:
-                    strike_deltas[strike] = greeks["delta"]
-                    if (
-                        stop_greater_than
-                        and greeks["delta"]
-                        and greeks["delta"] >= stop_greater_than
-                    ):
+                # Validate that the Greeks are available and coherent
+                if greeks is not None and 'delta' in greeks and greeks['delta'] is not None:
+                    strike_deltas[strike] = greeks['delta']
+                    if stop_greater_than is not None and greeks['delta'] >= stop_greater_than:
                         break
+                    if stop_less_than is not None and greeks['delta'] <= stop_less_than:
+                        break
+                else:
+                    # Skip strikes if Greeks are not available or are incoherent
+                    continue
 
-                    if (
-                        stop_less_than
-                        and greeks["delta"] 
-                        and greeks["delta"] <= stop_less_than
-                    ):
-                        break
-                else: 
-                    # IMS This will force the delta out of range for the trade
-                    # Do not set to 0 as this will create divide by zero errors in lumibot
-                    strike_deltas[strike] = 0.001
-            else:   
-                # IMS This will force the delta out of range for the trade  
-                strike_deltas[strike] = 0.001
+            except Exception as e:
+                # Log error and skip this strike
+                self.log_error(f"Error in obtaining Greeks for {asset}: {e}")
+                continue
 
         return strike_deltas
+
+
     
     # IMS The code to close a side does not do any retries.  This will be a problem in live trading.
     # This code assumes we only have one condor open at a time.  It loops through and closes
