@@ -120,7 +120,18 @@ class OptionsIronCondorMWT(Strategy):
 
         # Get the price of the underlying asset
         underlying_price = self.get_last_price(symbol)
-        rounded_underlying_price = round(underlying_price, 0)
+        if underlying_price is None or underlying_price <= 0:
+            # Log the error and take appropriate action
+            self.log_error("Failed to obtain valid price for the underlying asset.")
+            return  # or implement retry logic
+        
+        try:
+            rounded_underlying_price = round(underlying_price, 0)
+            if rounded_underlying_price <= 0:
+                raise ValueError("Rounded price is not valid.")
+        except (TypeError, ValueError) as e:
+            self.log_error(f"Error in rounding price: {e}")
+            return  # or handle accordingly
 
         # Add lines to the chart
         self.add_line(f"{symbol}_price", underlying_price)
@@ -757,10 +768,14 @@ class OptionsIronCondorMWT(Strategy):
         suggested_date = self.get_option_expiration_after_date(dt + timedelta(days=option_duration))
         return self.search_next_market_date(suggested_date, symbol, strike_price)
             
+    def log_error(self, message):
+        # Log the error message
+        # Potentially send an alert/notification
+        self.log_message(message, "red")
 
 if __name__ == "__main__":
         # Backtest this strategy
-        backtesting_start = datetime(2021, 1, 1)
+        backtesting_start = datetime(2023, 1, 1)
         backtesting_end = datetime(2023, 12, 15)
 
         trading_fee = TradingFee(percent_fee=0.005)  # IMS account for trading fees and slipage
@@ -773,7 +788,7 @@ if __name__ == "__main__":
             buy_trading_fees=[trading_fee],
             sell_trading_fees=[trading_fee],
             polygon_api_key=POLYGON_CONFIG["API_KEY"],
-            polygon_has_paid_subscription=True,
+            polygon_has_paid_subscription=False,
             name=OptionsIronCondorMWT.strategy_name,
             budget = OptionsIronCondorMWT.parameters["budget"],
         )
