@@ -924,10 +924,18 @@ class OptionsIronCondorMWT(Strategy):
 
 if __name__ == "__main__":
         # Backtest this strategy
-        backtesting_start = datetime(2021, 1, 1)
+        backtesting_start = datetime(2023, 6, 1)
         backtesting_end = datetime(2023, 12, 31)
-
+        
         trading_fee = TradingFee(percent_fee=0.007)  # IMS account for trading fees and slipage
+
+        only_cache = True
+        
+        if only_cache:
+            # Monkey patching get_price_data_from_polygon for using only cached polygon data.
+            from lumibot.tools import polygon_helper
+            from polygon_cache import get_price_data_from_polygon_cache
+            polygon_helper.get_price_data_from_polygon = get_price_data_from_polygon_cache
 
         # polygon_has_paid_subscription is set to true to api calls are not thottled
         OptionsIronCondorMWT.backtest(
