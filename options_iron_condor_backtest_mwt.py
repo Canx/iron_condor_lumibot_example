@@ -949,5 +949,6 @@ if __name__ == "__main__":
             polygon_has_paid_subscription=True,
             name=OptionsIronCondorMWT.strategy_name,
             budget = OptionsIronCondorMWT.parameters["budget"],
+            risk_free_rate=5.233
         )
  
